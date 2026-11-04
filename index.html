@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Discovery Engine | SIP Investor Insights</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        
+        /* Custom scrollbar for textareas */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+
+        .loader {
+            border-top-color: #4f46e5;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex h-screen overflow-hidden">
+
+    <!-- Sidebar / Config -->
+    <aside class="w-80 bg-slate-900 text-white flex flex-col h-full shadow-xl z-10 flex-shrink-0">
+        <div class="p-6 border-b border-slate-700">
+            <div class="flex items-center gap-2 text-indigo-400 mb-1">
+                <i class="ph-fill ph-brain text-3xl"></i>
+                <h1 class="text-xl font-bold tracking-tight text-white">Discovery Engine</h1>
+            </div>
+            <p class="text-xs text-slate-400">SIP Investor Insights Analyzer</p>
+        </div>
+
+        <div class="p-6 flex-1 overflow-y-auto flex flex-col gap-6">
+            <!-- API Key Section -->
+            <div>
+                <label class="block text-sm font-semibold mb-2 text-slate-300">Gemini API Key</label>
+                <input type="password" id="apiKey" placeholder="AIzaSy..." 
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-200 transition-all">
+                <p class="text-xs text-slate-500 mt-1">Required to run analysis using Gemini 3.1 Flash Preview.</p>
+            </div>
+
+            <!-- Input Method Section -->
+            <div class="flex flex-col gap-3">
+                <label class="block text-sm font-semibold text-slate-300">Raw Data Input</label>
+                
+                <button onclick="loadSampleData()" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 transition-colors w-full justify-center">
+                    <i class="ph ph-magic-wand text-lg text-indigo-400"></i>
+                    Load Sample Data
+                </button>
+                
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-slate-700"></div>
+                    </div>
+                    <div class="relative flex justify-center text-xs">
+                        <span class="bg-slate-900 px-2 text-slate-400">OR</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center w-full">
+                    <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700 border-dashed rounded-lg cursor-pointer bg-slate-800 hover:bg-slate-700 transition-colors">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i class="ph ph-upload-simple text-2xl text-slate-400 mb-1"></i>
+                            <p class="text-xs text-slate-400"><span class="font-semibold">Click to upload CSV/TXT</span></p>
+                        </div>
+                        <input type="file" id="fileUpload" accept=".csv,.txt" class="hidden" onchange="handleFileUpload(event)" />
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mt-auto">
+                <div id="errorBox" class="hidden bg-red-900/50 border border-red-500 text-red-200 text-xs p-3 rounded-lg mb-4"></div>
+                <button id="runBtn" onclick="runAnalysis()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-play"></i> Run Analysis
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full bg-slate-50 relative">
+        
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+            <div class="loader ease-linear rounded-full border-4 border-slate-200 h-16 w-16 mb-4"></div>
+            <h2 class="text-xl font-semibold text-slate-800">Synthesizing Insights...</h2>
+            <p class="text-slate-500 mt-2 max-w-md text-center">Gemini is analyzing themes, drop-off triggers, and extracting unmet needs from your raw data.</p>
+        </div>
+
+        <!-- Top split: Editor -->
+        <div class="h-1/3 border-b border-slate-200 bg-white flex flex-col">
+            <div class="px-6 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <i class="ph ph-database text-indigo-500"></i> Raw Conversation Data
+                </h2>
+                <span class="text-xs text-slate-400">Paste reviews, reddit threads, or forum discussions</span>
+            </div>
+            <textarea id="rawData" class="flex-1 w-full p-6 focus:outline-none resize-none text-sm text-slate-700 leading-relaxed placeholder-slate-400" placeholder="Paste your App Store reviews, Reddit threads, and Youtube comments here..."></textarea>
+        </div>
+
+        <!-- Bottom split: Dashboard Output -->
+        <div class="flex-1 overflow-y-auto p-8 bg-slate-50" id="dashboardArea">
+            
+            <div id="emptyState" class="h-full flex flex-col items-center justify-center text-slate-400">
+                <i class="ph-duotone ph-chart-polar text-6xl mb-4 text-slate-300"></i>
+                <p class="text-lg font-medium text-slate-500">Dashboard Ready</p>
+                <p class="text-sm mt-1 max-w-sm text-center">Enter your data and click 'Run Analysis' to generate actionable PM insights.</p>
+            </div>
+
+            <!-- Results Dashboard (Hidden by default) -->
+            <div id="resultsDashboard" class="hidden flex flex-col gap-6 max-w-6xl mx-auto pb-12">
+                
+                <header class="mb-2">
+                    <h2 class="text-2xl font-bold text-slate-800">Discovery Insights Report</h2>
+                    <p class="text-slate-500 text-sm mt-1">AI-synthesized from user feedback and community conversations.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Motivation Card -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-4 text-emerald-600">
+                            <div class="p-2 bg-emerald-50 rounded-lg"><i class="ph-fill ph-rocket-launch text-xl"></i></div>
+                            <h3 class="font-semibold text-slate-800">Key Motivations</h3>
+                        </div>
+                        <ul id="listMotivations" class="space-y-3 text-sm text-slate-600 list-disc pl-4 marker:text-emerald-300">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+
+                    <!-- Drop-off Card -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-4 text-rose-500">
+                            <div class="p-2 bg-rose-50 rounded-lg"><i class="ph-fill ph-trend-down text-xl"></i></div>
+                            <h3 class="font-semibold text-slate-800">Drop-off Triggers</h3>
+                        </div>
+                        <ul id="listDropoffs" class="space-y-3 text-sm text-slate-600 list-disc pl-4 marker:text-rose-300">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+
+                    <!-- Confusions Card -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-4 text-amber-500">
+                            <div class="p-2 bg-amber-50 rounded-lg"><i class="ph-fill ph-question text-xl"></i></div>
+                            <h3 class="font-semibold text-slate-800">App Confusions</h3>
+                        </div>
+                        <ul id="listConfusions" class="space-y-3 text-sm text-slate-600 list-disc pl-4 marker:text-amber-300">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+
+                    <!-- Unmet Needs Card -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-4 text-indigo-500">
+                            <div class="p-2 bg-indigo-50 rounded-lg"><i class="ph-fill ph-lightbulb text-xl"></i></div>
+                            <h3 class="font-semibold text-slate-800">Unmet Needs</h3>
+                        </div>
+                        <ul id="listUnmet" class="space-y-3 text-sm text-slate-600 list-disc pl-4 marker:text-indigo-300">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Opportunity Sizing Chart -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-2">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold text-slate-800 text-lg flex items-center gap-2">
+                                <i class="ph-fill ph-chart-bar text-indigo-500"></i> Opportunity Sizing & Impact
+                            </h3>
+                            <p class="text-sm text-slate-500">Quantified areas for product intervention based on sentiment volume and pain-point severity.</p>
+                        </div>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="opportunityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let myChart = null;
+
+        // Sample Data for testing
+        const sampleData = `[App Store Review] 2 Stars. "I started a 5k SIP in a Nifty 50 fund because my friend suggested it for wealth building. First month went fine. But market crashed and portfolio shows red. App doesn't explain why, just shows a minus sign. Panicked and paused my SIP."
+[Reddit - r/IndiaInvestments] "Does anyone know how long an AMC takes to register a mandate? My app shows 'Pending' for 6 days. First time investor here, getting anxious if my money is stuck. Thinking of canceling the mandate."
+[Play Store Review] 1 Star. "The UI is good but I need to change my SIP date from 5th to 10th because my salary cycle changed. There is NO OPTION to edit date! Had to cancel and create a whole new SIP. So frustrating."
+[TradingQ&A Forum] "I want to do a step-up SIP automatically by 10% every year. Which app supports this easily for mutual funds? Currently doing it manually every January and sometimes I forget."
+[Youtube Comment] "Bro, which fund is good for 3 years? App shows 500 funds, very confusing. Ended up buying 4 small cap funds, hope they do well."
+[App Store Review] 3 Stars. "Good app but lacks a unified family view. I manage SIPs for my wife and me. Have to log out and log in constantly. Will switch to another app if this isn't fixed."
+[Reddit] "I paused my SIP because of an unexpected medical emergency. But the app keeps sending me aggressive notifications 'You are falling behind on your goals!'. It's very insensitive. Uninstalled."`;
+
+        function loadSampleData() {
+            document.getElementById('rawData').value = sampleData;
+            showError(''); // Clear errors
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('rawData').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function showError(msg) {
+            const errBox = document.getElementById('errorBox');
+            if (msg) {
+                errBox.innerText = msg;
+                errBox.classList.remove('hidden');
+            } else {
+                errBox.classList.add('hidden');
+            }
+        }
+
+        async function runAnalysis() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const rawText = document.getElementById('rawData').value.trim();
+
+            if (!apiKey) {
+                showError("Please enter your Gemini API Key.");
+                return;
+            }
+            if (!rawText) {
+                showError("Please provide some raw data to analyze.");
+                return;
+            }
+
+            showError('');
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+
+            try {
+                const results = await callGeminiAPI(apiKey, rawText);
+                renderDashboard(results);
+            } catch (error) {
+                console.error(error);
+                showError("Analysis failed: " + error.message);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }
+        }
+
+        async function callGeminiAPI(apiKey, dataText) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            
+            const systemPrompt = "You are a world-class Product Manager and User Researcher analyzing unstructured feedback from Indian retail investors regarding Systematic Investment Plans (SIPs). Extract deep insights into their psychology, friction points, and unmet needs based ONLY on the provided text.";
+            
+            const userQuery = `Analyze the following raw data and extract structured insights based on the schema requested. Keep list items concise (1-2 sentences max). \n\nData:\n${dataText}`;
+
+            // We enforce structured output via JSON Schema
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            motivations: { 
+                                type: "ARRAY", 
+                                items: { type: "STRING" },
+                                description: "Core reasons people start SIPs and their expectations."
+                            },
+                            dropoffs: { 
+                                type: "ARRAY", 
+                                items: { type: "STRING" },
+                                description: "Specific triggers that lead users to pause, cancel, or stop investing."
+                            },
+                            confusions: { 
+                                type: "ARRAY", 
+                                items: { type: "STRING" },
+                                description: "Specific UI/UX confusions, missing features, or anxieties experienced inside the app."
+                            },
+                            unmetNeeds: { 
+                                type: "ARRAY", 
+                                items: { type: "STRING" },
+                                description: "Latent needs, missing functionality, or desires that are not currently fulfilled by the app."
+                            },
+                            opportunities: {
+                                type: "ARRAY",
+                                description: "Quantified opportunity areas for PMs to prioritize. Provide 4 to 6 items.",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        name: { type: "STRING", description: "Short name of the feature or opportunity area (e.g. 'Flexible SIP Dates')" },
+                                        score: { type: "INTEGER", description: "Impact score from 1 to 100 based on severity and volume in text." }
+                                    },
+                                    required: ["name", "score"]
+                                }
+                            }
+                        },
+                        required: ["motivations", "dropoffs", "confusions", "unmetNeeds", "opportunities"]
+                    }
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || "API request failed.");
+            }
+
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                return JSON.parse(candidate.content.parts[0].text);
+            } else {
+                throw new Error("Unexpected response format from Gemini.");
+            }
+        }
+
+        function populateList(elementId, items) {
+            const ul = document.getElementById(elementId);
+            ul.innerHTML = '';
+            
+            if (!items || items.length === 0) {
+                ul.innerHTML = '<li class="italic text-slate-400">No specific insights found in data.</li>';
+                return;
+            }
+
+            // Limit to top 4 for card aesthetics
+            const displayItems = items.slice(0, 4);
+            
+            displayItems.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "leading-relaxed";
+                li.innerText = item;
+                ul.appendChild(li);
+            });
+        }
+
+        function renderDashboard(data) {
+            // Hide Loader & Empty State, Show Dashboard
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultsDashboard').classList.remove('hidden');
+
+            // Populate Lists
+            populateList('listMotivations', data.motivations);
+            populateList('listDropoffs', data.dropoffs);
+            populateList('listConfusions', data.confusions);
+            populateList('listUnmet', data.unmetNeeds);
+
+            // Render Chart
+            renderChart(data.opportunities);
+        }
+
+        function renderChart(opportunities) {
+            const ctx = document.getElementById('opportunityChart').getContext('2d');
+            
+            // Cleanup existing chart instance if exists
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            if (!opportunities || opportunities.length === 0) {
+                // Mock fallback if LLM misses it somehow
+                opportunities = [
+                    { name: 'Educational Onboarding', score: 75 },
+                    { name: 'Flexible SIP Dates', score: 85 },
+                    { name: 'Family Portfolio View', score: 60 },
+                    { name: 'Automated Step-up', score: 90 }
+                ];
+            }
+
+            // Sort descending by score
+            opportunities.sort((a, b) => b.score - a.score);
+
+            const labels = opportunities.map(o => o.name);
+            const scores = opportunities.map(o => o.score);
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Estimated Impact Score (1-100)',
+                        data: scores,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)', // Indigo-500
+                        borderColor: 'rgba(79, 70, 229, 1)', // Indigo-600
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barThickness: 'flex',
+                        maxBarThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#f1f5f9', // slate-100
+                            },
+                            ticks: {
+                                color: '#64748b' // slate-500
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#475569', // slate-600
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            padding: 12,
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 14, weight: 'bold' },
+                            displayColors: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
