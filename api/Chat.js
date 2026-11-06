@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const embedResult = await embeddingModel.embedContent(req.body.message);
     
     // 2. Search Pinecone for top 30 relevant reviews
-    const index = pc.index('sip-discovery');
+    const index = pc.index('sip-discovery-3072');
     const queryResponse = await index.query({
       vector: embedResult.embedding.values,
       topK: 30,
