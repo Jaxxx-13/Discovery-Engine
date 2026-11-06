@@ -8,7 +8,6 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
-    console.error("Missing GOOGLE_GENERATIVE_AI_API_KEY");
     return res.status(500).json({ error: 'API key is missing on the server' });
   }
 
@@ -16,11 +15,11 @@ export default async function handler(req, res) {
   const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
   try {
-    // 1. Embed user query
+    // 1. Vectorize the question
     const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
     const embedResult = await embeddingModel.embedContent(req.body.message);
 
-    // 2. Query Pinecone vector database
+    // 2. Query Pinecone
     const index = pc.index('sip-discovery-3072');
     const queryResponse = await index.query({
       vector: embedResult.embedding.values,
@@ -28,13 +27,13 @@ export default async function handler(req, res) {
       includeMetadata: true,
     });
 
-    // 3. Construct context
+    // 3. Format the context
     const context = queryResponse.matches.map(m =>
       `Review: ${m.metadata?.text}\nTags: Segment: ${m.metadata?.user_segment}, Trigger: ${m.metadata?.drop_off_trigger}`
     ).join('\n\n');
 
-    // 4. Generate answer using pinned model version
-    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+    // 4. Generate the answer with the active 2.0 model
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const prompt = `You are a Principal Product Analyst. Answer the user query using only this context. Quantify your findings using the provided Tags.\n\nContext:\n${context}\n\nQuestion: ${req.body.message}`;
 
     const result = await chatModel.generateContent(prompt);
