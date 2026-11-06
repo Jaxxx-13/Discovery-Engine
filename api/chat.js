@@ -15,11 +15,11 @@ export default async function handler(req, res) {
   const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
   try {
-    // 1. Vectorize the question
+    // 1. Vectorize the question (gemini-embedding-2 outputs 3072 dimensions)
     const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
     const embedResult = await embeddingModel.embedContent(req.body.message);
 
-    // 2. Query Pinecone
+    // 2. Query Pinecone (matches 3072-dimension index)
     const index = pc.index('sip-discovery-3072');
     const queryResponse = await index.query({
       vector: embedResult.embedding.values,
@@ -27,20 +27,20 @@ export default async function handler(req, res) {
       includeMetadata: true,
     });
 
-    // 3. Format the context
+    // 3. Format the retrieved context
     const context = queryResponse.matches.map(m =>
       `Review: ${m.metadata?.text}\nTags: Segment: ${m.metadata?.user_segment}, Trigger: ${m.metadata?.drop_off_trigger}`
     ).join('\n\n');
 
-    // 4. Generate the answer with the active 2.0 model
-    const chatModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // 4. Generate the response with active model
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
     const prompt = `You are a Principal Product Analyst. Answer the user query using only this context. Quantify your findings using the provided Tags.\n\nContext:\n${context}\n\nQuestion: ${req.body.message}`;
 
     const result = await chatModel.generateContent(prompt);
     return res.status(200).json({ answer: result.response.text() });
 
   } catch (error) {
-    console.error("Backend Crash:", error);
+    console.error("Backend Crash Details:", error);
     return res.status(500).json({ error: error.message });
   }
 }
