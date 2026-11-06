@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Groww SIP Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col items-center py-10">
+  <div class="w-full max-w-3xl flex flex-col h-full bg-white shadow rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4 border-b pb-2">SIP Discovery Engine</h1>
+    
+    <div id="chatbox" class="flex-1 overflow-y-auto mb-4 space-y-4"></div>
+
+    <div class="flex gap-2">
+      <input id="userInput" type="text" class="flex-1 p-3 border rounded focus:ring-2 focus:ring-blue-500" placeholder="Why are users pausing SIPs?">
+      <button onclick="askEngine()" class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Analyze</button>
+    </div>
+  </div>
+
+  <script>
+    async function askEngine() {
+      const input = document.getElementById('userInput');
+      const chatbox = document.getElementById('chatbox');
+      const question = input.value;
+      if (!question) return;
+
+      chatbox.innerHTML += `<div class="bg-blue-100 p-4 rounded ml-12"><b>You:</b> ${question}</div>`;
+      input.value = 'Analyzing...';
+      input.disabled = true;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question })
+        });
+        const data = await response.json();
+        chatbox.innerHTML += `<div class="bg-gray-100 p-4 rounded mr-12 whitespace-pre-wrap"><b>AI Analyst:</b> ${data.answer}</div>`;
+      } catch (error) {
+        chatbox.innerHTML += `<div class="text-red-500 p-4">Error connecting to data.</div>`;
+      }
+
+      input.value = '';
+      input.disabled = false;
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
