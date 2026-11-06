@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
   try {
-    // 1. Vectorize the question (Upgraded to current Gemini model)
+    // 1. Vectorize the question
     const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
     const embedResult = await embeddingModel.embedContent(req.body.message);
 
@@ -25,8 +25,8 @@ export default async function handler(req, res) {
       `Review: ${m.metadata?.text}\nTags: Segment: ${m.metadata?.user_segment}, Trigger: ${m.metadata?.drop_off_trigger}`
     ).join('\n\n');
 
-    // 4. Generate the answer
-    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    // 4. Generate the answer (Clean standard model name)
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `You are a Principal Product Analyst. Answer the user query using only this context. Quantify your findings using the provided Tags.\n\nContext:\n${context}\n\nQuestion: ${req.body.message}`;
 
     const result = await chatModel.generateContent(prompt);
