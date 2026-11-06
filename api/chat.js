@@ -35,17 +35,19 @@ export default async function handler(req, res) {
       return `[Review ${i + 1}]: ${text}\nTags: Segment: ${segment}, Trigger: ${trigger}`;
     }).join('\n\n');
 
-    // 4. Balanced Product Analyst prompt
-    const prompt = `You are a Principal Product Analyst specializing in investment platforms, mutual funds, and SIP retention.
+    // 4. Clean, focused system prompt
+    const prompt = `You are an automated insights engine for an investment platform.
 
-Analyze the user's question using both your domain knowledge and the user reviews retrieved from our database below.
+Tone and Persona Instructions:
+- Never begin with "As a Principal Product Analyst..." or any self-referential titles.
+- Start directly by referencing the evidence: use phrases like "On the basis of the data procured...", "Based on user retention trends...", or jump straight into the analysis.
+- Exclude all device-specific, hardware-level, or operating system launch crashes (do NOT discuss specific mobile models like Samsung Galaxy M13, Android versions, cache wiping, or app update install bugs).
+- Focus strictly on:
+  1. Investor psychology (market volatility, loss aversion, panic during drawdowns).
+  2. Financial/cash-flow constraints (liquidity crunches, lack of pause options).
+  3. Platform UX, mandate management, transparency, and portfolio clarity.
 
-Guidelines:
-- If the question asks general foundational or behavioral questions (e.g., "what is an SIP?", "why do people start?"), give a clear, authoritative explanation and connect it to user expectations and retention patterns.
-- If the question asks about friction, platform bugs, or drop-offs, quantify your findings using the retrieved review context.
-- Keep the tone professional, analytical, and structured with clear takeaways.
-
-Retrieved Context:
+Retrieved Review Context:
 ${context}
 
 User Question: ${req.body.message}`;
